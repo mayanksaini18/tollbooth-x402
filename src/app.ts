@@ -3,7 +3,7 @@ import { streamSSE } from 'hono/streaming';
 import type { RuntimeConfig } from './config.js';
 import { byId } from './corpus.js';
 import { earnings, emit, reset, subscribe, type MarketEvent } from './events.js';
-import { askHandler } from './routes/ask.js';
+import { askHandler, isRunning } from './routes/ask.js';
 import { createArticleHandler, createFeedHandler } from './routes/articles.js';
 import { dashboardHtml } from './web/dashboard.js';
 import { createX402Middleware } from './x402/config.js';
@@ -29,6 +29,9 @@ export function createApp(config: RuntimeConfig, _options: AppOptions = {}) {
       const unsubscribe = subscribe((e: MarketEvent) => {
         if (open) void stream.writeSSE({ data: JSON.stringify(e) });
       });
+      // Tell a newly connected page whether a run is actually in flight. Without this a
+      // page whose server restarted mid-run keeps a dead "Running..." button forever.
+      void stream.writeSSE({ data: JSON.stringify({ type: 'state', running: isRunning() }) });
       stream.onAbort(() => {
         open = false;
         unsubscribe();

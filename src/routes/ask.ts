@@ -9,6 +9,9 @@ import { emit, reset } from '../events.js';
 
 let running = false;
 
+/** Whether a run is currently in flight, so a reconnecting page can re-arm its button. */
+export const isRunning = () => running;
+
 export async function askHandler(c: Context) {
   if (running) return c.json({ error: 'busy', message: 'A run is already in progress.' }, 409);
 

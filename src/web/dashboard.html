@@ -196,6 +196,11 @@ es.onmessage = (m) => {
       runBtn.disabled = false;
       runBtn.textContent = "Send the agent";
       break;
+    case "state":
+      // Sent when this page connects. Re-arms a button left hanging by a server restart.
+      runBtn.disabled = Boolean(e.running);
+      runBtn.textContent = e.running ? "Running…" : "Send the agent";
+      break;
   }
 };
 </script>
