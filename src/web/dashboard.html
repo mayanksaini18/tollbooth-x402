@@ -16,7 +16,15 @@
          display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
   h1{margin:0;font-size:20px;letter-spacing:-.02em}
   h1 span{color:var(--accent)}
-  .q{color:var(--dim);font-size:15px;flex:1;min-width:240px}
+  .ask{display:flex;gap:9px;flex:1;min-width:320px}
+  .ask input{flex:1;background:#0e1319;border:1px solid var(--line);color:var(--fg);
+             border-radius:7px;padding:9px 13px;font:inherit;font-size:14px;min-width:0}
+  .ask input:focus{outline:none;border-color:var(--accent)}
+  .ask button{background:var(--accent);color:#fff;border:0;border-radius:7px;
+              padding:9px 17px;font:inherit;font-weight:600;font-size:14px;cursor:pointer;white-space:nowrap}
+  .ask button:disabled{opacity:.45;cursor:default}
+  .qnow{color:var(--dim);font-size:13px;padding:9px 26px 0;border-bottom:1px solid var(--line);
+        padding-bottom:11px}
   .net{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--skip)}
   main{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);
        height:calc(100vh - 71px)}
@@ -55,9 +63,15 @@
 <body>
 <header>
   <h1>Toll<span>booth</span></h1>
-  <div class="q" id="q">waiting for an agent…</div>
+  <form class="ask" id="ask">
+    <input id="qin" autocomplete="off" spellcheck="false"
+           placeholder="Ask the archive a question…"
+           value="What do we actually know about the health effects of microplastics in humans?"/>
+    <button id="run" type="submit">Send the agent</button>
+  </form>
   <div class="net">Algorand TestNet · USDC · GoPlausible facilitator</div>
 </header>
+<div class="qnow" id="qnow" hidden></div>
 <main>
   <section>
     <div class="head"><b>The agent — buying</b><span class="net" id="wallet"></span></div>
@@ -97,6 +111,30 @@ function add(el, cls, tag, tagCls, title, sub, link) {
   el.prepend(row);
 }
 
+const form = $("ask"), qin = $("qin"), runBtn = $("run");
+form.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const question = qin.value.trim();
+  if (!question) return;
+  runBtn.disabled = true;
+  runBtn.textContent = "Running…";
+  try {
+    const r = await fetch("/ask", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ question }),
+    });
+    if (!r.ok) {
+      const b = await r.json().catch(() => ({}));
+      runBtn.textContent = b.message || "Failed";
+      setTimeout(() => { runBtn.disabled = false; runBtn.textContent = "Send the agent"; }, 2500);
+    }
+  } catch {
+    runBtn.disabled = false;
+    runBtn.textContent = "Send the agent";
+  }
+});
+
 const es = new EventSource("/events");
 es.onmessage = (m) => {
   const e = JSON.parse(m.data);
@@ -109,20 +147,22 @@ es.onmessage = (m) => {
       $("sales").textContent = "0"; $("seen").textContent = "0"; $("bar").style.width = "0%";
       break;
     case "start":
-      budget = e.budget; $("q").textContent = e.question;
+      budget = e.budget;
+      $("qnow").hidden = false;
+      $("qnow").textContent = e.question;
       $("budget").textContent = money(budget);
       $("wallet").textContent = String(e.wallet).slice(0, 10) + "…";
       break;
     case "ranked":
+      seen = e.considered;
+      $("seen").textContent = seen;
       add(A, "", "RANK", "s", `Appraised ${e.considered} previews — ${e.shortlisted} worth buying`,
           `scored by ${e.by}`);
       break;
     case "skipped":
-      seen++; $("seen").textContent = seen;
       add(A, "skipped", "SKIP", "s", e.title, `score ${e.score} — ${e.reason}`);
       break;
     case "buying":
-      seen++; $("seen").textContent = seen;
       add(A, "buying", "402", "p", e.title, `score ${e.score} — ${e.reason} · paying…`);
       break;
     case "bought":
@@ -142,6 +182,14 @@ es.onmessage = (m) => {
     case "answer":
       $("ansbox").hidden = false;
       $("ans").textContent = e.answer;
+      runBtn.disabled = false;
+      runBtn.textContent = "Send the agent";
+      break;
+    case "failed":
+      if (e.side === "agent" && e.error) {
+        runBtn.disabled = false;
+        runBtn.textContent = "Send the agent";
+      }
       break;
   }
 };

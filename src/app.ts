@@ -3,6 +3,7 @@ import { streamSSE } from 'hono/streaming';
 import type { RuntimeConfig } from './config.js';
 import { byId } from './corpus.js';
 import { earnings, emit, reset, subscribe, type MarketEvent } from './events.js';
+import { askHandler } from './routes/ask.js';
 import { createArticleHandler, createFeedHandler } from './routes/articles.js';
 import { dashboardHtml } from './web/dashboard.js';
 import { createX402Middleware } from './x402/config.js';
@@ -42,6 +43,7 @@ export function createApp(config: RuntimeConfig, _options: AppOptions = {}) {
     emit({ ...(await c.req.json<MarketEvent>()), side: 'agent' });
     return c.json({ ok: true });
   });
+  app.post('/ask', askHandler);
   app.post('/reset', c => {
     reset();
     return c.json({ ok: true });
