@@ -120,7 +120,14 @@ async function main() {
   }
 
   console.log(`\n  Bought ${bought.length} articles for ${money(spent)} of ${money(BUDGET)}\n`);
-  if (!bought.length) return;
+
+  if (!bought.length) {
+    // Nothing in the archive was worth paying for. Refusing to spend is the correct
+    // outcome, not a failure — say so plainly rather than exiting quietly.
+    console.log('  Nothing in this archive was relevant. Spent nothing.\n');
+    await say({ type: 'nothing', reason: 'No article scored above zero for this question.' });
+    return;
+  }
 
   // 4. Answer using only what was paid for.
   if (activeProvider() === 'none') {

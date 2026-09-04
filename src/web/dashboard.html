@@ -185,11 +185,16 @@ es.onmessage = (m) => {
       runBtn.disabled = false;
       runBtn.textContent = "Send the agent";
       break;
-    case "failed":
-      if (e.side === "agent" && e.error) {
-        runBtn.disabled = false;
-        runBtn.textContent = "Send the agent";
-      }
+    case "nothing":
+      $("ansbox").hidden = false;
+      $("ans").textContent =
+        "Nothing in this archive was worth paying for, so the agent spent nothing. " +
+        "Every one of the 40 previews scored zero against this question.";
+      add(A, "", "NONE", "s", "Nothing relevant — spent $0.0000", e.reason);
+      break;
+    case "finished":
+      runBtn.disabled = false;
+      runBtn.textContent = "Send the agent";
       break;
   }
 };

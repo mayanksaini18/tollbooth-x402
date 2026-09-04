@@ -26,8 +26,11 @@ export async function askHandler(c: Context) {
   });
   child.stdout.on('data', d => process.stdout.write(d));
   child.stderr.on('data', d => process.stderr.write(d));
+  // The server owns the end of a run: the agent can exit down several paths — bought
+  // nothing, crashed, was killed — and the dashboard must re-arm on every one of them.
   child.on('close', code => {
     running = false;
+    emit({ type: 'finished', side: 'agent', code });
     if (code !== 0) emit({ type: 'failed', side: 'agent', error: `agent exited with code ${code}` });
   });
 
