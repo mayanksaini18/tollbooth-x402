@@ -6,7 +6,7 @@
  * If there's no API key, or the call fails, keyword scoring takes over. The demo
  * must never hard-stop because an LLM had a bad moment in front of an audience.
  */
-import Anthropic from "@anthropic-ai/sdk";
+import { activeProvider, complete } from "./llm.js";
 
 export interface Candidate { id: string; title: string; preview: string; section: string; date: string }
 export interface Ranked { id: string; score: number; reason: string }
@@ -39,37 +39,32 @@ export function keywordRank(question: string, items: Candidate[]): Ranked[] {
     .sort((a, b) => b.score - a.score);
 }
 
-export async function rankPreviews(question: string, items: Candidate[]): Promise<{ ranked: Ranked[]; by: "model" | "keywords" }> {
-  if (!process.env.ANTHROPIC_API_KEY) return { ranked: keywordRank(question, items), by: "keywords" };
+export async function rankPreviews(
+  question: string,
+  items: Candidate[],
+): Promise<{ ranked: Ranked[]; by: "model" | "keywords" }> {
+  if (activeProvider() === "none") return { ranked: keywordRank(question, items), by: "keywords" };
 
   const catalogue = items
     .map((it) => `<a id="${it.id}" section="${it.section}" date="${it.date}">\n${it.title}\n${it.preview}\n</a>`)
     .join("\n\n");
 
   try {
-    const client = new Anthropic();
-    const res = await client.messages.create({
-      model: "claude-opus-5",
-      max_tokens: 8000,
-      output_config: { effort: "low" },
+    const text = await complete({
+      json: true,
+      maxTokens: 8000,
       system:
         "You appraise article previews for a research agent working under a strict budget. " +
         "Each purchase costs real money, so be decisive: score 0 for anything off-topic. " +
-        "Reply with JSON only — no prose, no code fences.",
-      messages: [
-        {
-          role: "user",
-          content:
-            `Question: ${question}\n\n` +
-            `Score each article 0-10 for how much its FULL TEXT would help answer that question, ` +
-            `judging only from the preview. Most of these are unrelated news — score those 0.\n\n` +
-            `${catalogue}\n\n` +
-            `Return: {"rankings":[{"id":"...","score":N,"reason":"under 12 words"}]}`,
-        },
-      ],
+        "Reply with JSON only \u2014 no prose, no code fences.",
+      prompt:
+        `Question: ${question}\n\n` +
+        `Score each article 0-10 for how much its FULL TEXT would help answer that question, ` +
+        `judging only from the preview. Most of these are unrelated news \u2014 score those 0.\n\n` +
+        `${catalogue}\n\n` +
+        `Return: {"rankings":[{"id":"...","score":N,"reason":"under 12 words"}]}`,
     });
 
-    const text = res.content.filter((b) => b.type === "text").map((b) => b.text).join("");
     const json = text.slice(text.indexOf("{"), text.lastIndexOf("}") + 1);
     const parsed = JSON.parse(json) as { rankings: Ranked[] };
     if (!Array.isArray(parsed.rankings) || parsed.rankings.length === 0) throw new Error("empty rankings");
@@ -82,7 +77,7 @@ export async function rankPreviews(question: string, items: Candidate[]): Promis
 
     return ranked.length ? { ranked, by: "model" } : { ranked: keywordRank(question, items), by: "keywords" };
   } catch (err) {
-    console.warn(`  ranking model unavailable (${(err as Error).message}) — falling back to keywords`);
+    console.warn(`  ranking model unavailable (${(err as Error).message}) \u2014 falling back to keywords`);
     return { ranked: keywordRank(question, items), by: "keywords" };
   }
 }

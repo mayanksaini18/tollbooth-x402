@@ -17,7 +17,9 @@
     "sandbox": "tsx scripts/agent-sandbox.ts",
     "simulate": "tsx scripts/payment-flow-simulator.ts",
     "agent": "tsx client/research-agent.ts",
-    "wallet": "tsx scripts/wallet.ts"
+    "wallet": "tsx scripts/wallet.ts",
+    "probe:llm": "tsx scripts/probe-llm.ts",
+    "probe:pay": "tsx scripts/probe-verify.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.123.0",

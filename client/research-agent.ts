@@ -8,9 +8,9 @@
  * Every purchase is a real USDC settlement on Algorand TestNet.
  */
 import 'dotenv/config';
-import Anthropic from '@anthropic-ai/sdk';
 import { createAvmPayingClient } from '../src/x402/client.js';
 import { explainPaymentError } from './lib.js';
+import { activeProvider, complete } from './llm.js';
 import { rankPreviews, type Candidate } from './rank.js';
 
 const QUESTION =
@@ -116,8 +116,8 @@ async function main() {
   if (!bought.length) return;
 
   // 4. Answer using only what was paid for.
-  if (!process.env.ANTHROPIC_API_KEY) {
-    console.log('  (No ANTHROPIC_API_KEY — skipping synthesis.) Purchased sources:');
+  if (activeProvider() === 'none') {
+    console.log('  (No LLM key — skipping synthesis.) Purchased sources:');
     bought.forEach((b, i) => console.log(`  [${i + 1}] ${b.title}`));
     await say({ type: 'answer', answer: '(synthesis skipped — no API key)', sources: bought.map(b => b.title), spent });
     return;
@@ -125,13 +125,13 @@ async function main() {
 
   await say({ type: 'synthesizing', sources: bought.length });
   const sources = bought.map((b, i) => `[${i + 1}] ${b.title}\n${b.body}`).join('\n\n');
-  const res = await new Anthropic().messages.create({
-    model: 'claude-opus-5',
-    max_tokens: 2000,
-    system: 'Answer only from the supplied sources. Cite them inline as [1], [2]. Be concise — under 180 words.',
-    messages: [{ role: 'user', content: `Question: ${QUESTION}\n\nSources:\n\n${sources}` }],
-  });
-  const answer = res.content.filter(b => b.type === 'text').map(b => b.text).join('').trim();
+  const answer = (
+    await complete({
+      maxTokens: 2000,
+      system: 'Answer only from the supplied sources. Cite them inline as [1], [2]. Be concise — under 180 words.',
+      prompt: `Question: ${QUESTION}\n\nSources:\n\n${sources}`,
+    })
+  ).trim();
 
   console.log('  ── Answer ──────────────────────────────────────────\n');
   console.log(answer.split('\n').map(l => `  ${l}`).join('\n'));

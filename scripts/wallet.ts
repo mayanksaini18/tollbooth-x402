@@ -53,6 +53,24 @@ async function inspect(address: string): Promise<Status> {
   };
 }
 
+/**
+ * The agent needs very little ALGO — the facilitator sponsors transaction fees — so
+ * surplus can seed the publisher's minimum balance. Saves a second faucet trip, which
+ * matters when the clock is running.
+ */
+async function seed(from: algosdk.Account, to: string, algo: number) {
+  const sp = await algod.getTransactionParams().do();
+  const txn = algosdk.makePaymentTxnWithSuggestedParamsFromObject({
+    sender: from.addr.toString(),
+    receiver: to,
+    amount: Math.round(algo * 1e6),
+    suggestedParams: sp,
+  });
+  const { txid } = await algod.sendRawTransaction(txn.signTxn(from.sk)).do();
+  await algosdk.waitForConfirmation(algod, txid, 4);
+  return txid;
+}
+
 async function optIn(acct: algosdk.Account) {
   const sp = await algod.getTransactionParams().do();
   const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
@@ -73,6 +91,14 @@ upsert('PAY_TO_ADDRESS', publisher.addr.toString());
 upsert('WALLET_ADDRESS', publisher.addr.toString());
 
 const blockers: string[] = [];
+
+// If the publisher is short on ALGO and the agent has plenty, top it up locally.
+const payerAlgo = (await inspect(payer.addr.toString())).algo;
+const pubAlgo = (await inspect(publisher.addr.toString())).algo;
+if (pubAlgo < 0.3 && payerAlgo > 1.5) {
+  process.stdout.write(`  Seeding the publisher with 1 ALGO from the agent... `);
+  console.log(await seed(payer, publisher.addr.toString(), 1));
+}
 
 for (const [label, acct] of [['agent  ', payer], ['meridian', publisher]] as const) {
   const s = await inspect(acct.addr.toString());
