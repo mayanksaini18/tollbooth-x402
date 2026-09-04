@@ -41,9 +41,18 @@ The Meridian that gets paid — opts both into USDC, and refuses to pass until e
 funded. Both sides must be opted in; a receiver that has not opted in makes settlement
 fail in a way that is unpleasant to diagnose live.
 
-Optional: set `ANTHROPIC_API_KEY` to have Claude rank the previews and write the final
-answer. Without it, a stemmed keyword ranker takes over and the demo still runs — the
-model is never a single point of failure on stage.
+Optional: set **`GEMINI_API_KEY`** (free tier — https://aistudio.google.com/apikey) or
+`ANTHROPIC_API_KEY` to have a model rank the previews and write the final answer.
+Check it with `pnpm probe:llm`, which lists the models your key can actually reach.
+
+Appraisal degrades in three steps, so nothing here is a single point of failure:
+
+1. **The model.** Gemini scores 12/12 of the top twelve correctly and zeroes all 28 decoys.
+2. **The cache.** A successful ranking is written to `.rank-cache.json` and replayed in
+   0.0s. Rehearse once and the demo cannot be broken by free-tier congestion — Gemini
+   returns `503 "experiencing high demand"` often enough to matter. `FORCE_RANK=1` reruns it.
+3. **Keywords.** A stemmed term-overlap ranker with no network at all. Visibly worse —
+   it buys one irrelevant article and misses four good ones — but the demo still runs.
 
 ## Routes
 
@@ -70,6 +79,8 @@ rather than a toll.
 - **Both payer and receiver must opt into the USDC ASA.** Otherwise the facilitator
   returns `isValid: false, "asset 10458941 missing from <addr>"` and the resource
   server answers a bare `402` with no explanation. `pnpm wallet` handles both.
-- **Diagnose payments with `pnpm exec tsx scripts/probe-verify.ts`.** It asks the
-  facilitator to verify a real payload and prints the actual reason, instead of the
-  silent 402 the middleware returns.
+- **Diagnose payments with `pnpm probe:pay`.** It asks the facilitator to verify a real
+  payload and prints the actual reason, instead of the silent 402 the middleware returns.
+- **Circle's TestNet USDC faucet limits per address, per 2 hours.** `pnpm wallet` will
+  take USDC in *either* wallet and move it to the agent, so a rate-limited address is
+  not a dead end. https://testnet.folks.finance/faucet is a second source.

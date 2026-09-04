@@ -33,39 +33,57 @@ const GEMINI_MODELS = [
   'gemini-flash-latest',
 ].filter(Boolean) as string[];
 
+/** Free-tier capacity comes and goes; these are worth trying the next model for. */
+const TRANSIENT = new Set([404, 429, 500, 502, 503, 504]);
+
 async function gemini(o: CompleteOptions): Promise<string> {
   const key = process.env.GEMINI_API_KEY!.trim();
   let lastError = '';
 
-  for (const model of GEMINI_MODELS) {
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
-      {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
-        body: JSON.stringify({
-          system_instruction: { parts: [{ text: o.system }] },
-          contents: [{ role: 'user', parts: [{ text: o.prompt }] }],
-          generationConfig: {
-            maxOutputTokens: o.maxTokens ?? 8000,
-            ...(o.json ? { responseMimeType: 'application/json' } : {}),
+  // Two passes: models are frequently "experiencing high demand" for a few seconds.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    for (const model of GEMINI_MODELS) {
+      let res: Response;
+      try {
+        res = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
+          {
+            method: 'POST',
+            headers: { 'content-type': 'application/json', 'x-goog-api-key': key },
+            body: JSON.stringify({
+              system_instruction: { parts: [{ text: o.system }] },
+              contents: [{ role: 'user', parts: [{ text: o.prompt }] }],
+              generationConfig: {
+                maxOutputTokens: o.maxTokens ?? 8000,
+                ...(o.json ? { responseMimeType: 'application/json' } : {}),
+              },
+            }),
           },
-        }),
-      },
-    );
+        );
+      } catch (e) {
+        lastError = `${model}: ${(e as Error).message}`;
+        continue;
+      }
 
-    if (res.status === 404) {
-      lastError = `model ${model} not available`;
-      continue; // try the next known name
+      if (TRANSIENT.has(res.status)) {
+        lastError = `${model}: HTTP ${res.status}`;
+        continue; // next model, then a second pass
+      }
+      if (!res.ok) throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 200)}`);
+
+      const body = (await res.json()) as {
+        candidates?: Array<{ finishReason?: string; content?: { parts?: Array<{ text?: string }> } }>;
+      };
+      const candidate = body.candidates?.[0];
+      const text = candidate?.content?.parts?.map(p => p.text ?? '').join('') ?? '';
+      if (!text.trim()) {
+        // MAX_TOKENS here means reasoning consumed the whole output budget.
+        lastError = `${model}: empty completion (${candidate?.finishReason ?? 'no reason'})`;
+        continue;
+      }
+      return text;
     }
-    if (!res.ok) throw new Error(`Gemini ${res.status}: ${(await res.text()).slice(0, 200)}`);
-
-    const body = (await res.json()) as {
-      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
-    };
-    const text = body.candidates?.[0]?.content?.parts?.map(p => p.text ?? '').join('') ?? '';
-    if (!text.trim()) throw new Error('Gemini returned an empty completion');
-    return text;
+    if (attempt === 0) await new Promise(r => setTimeout(r, 2000));
   }
   throw new Error(lastError || 'no usable Gemini model');
 }

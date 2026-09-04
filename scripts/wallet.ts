@@ -71,6 +71,21 @@ async function seed(from: algosdk.Account, to: string, algo: number) {
   return txid;
 }
 
+/** Move USDC between the two wallets we control, whichever one the faucet fed. */
+async function sendUsdc(from: algosdk.Account, to: string, usdc: number) {
+  const sp = await algod.getTransactionParams().do();
+  const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
+    sender: from.addr.toString(),
+    receiver: to,
+    amount: Math.round(usdc * 1e6),
+    assetIndex: ASA,
+    suggestedParams: sp,
+  });
+  const { txid } = await algod.sendRawTransaction(txn.signTxn(from.sk)).do();
+  await algosdk.waitForConfirmation(algod, txid, 4);
+  return txid;
+}
+
 async function optIn(acct: algosdk.Account) {
   const sp = await algod.getTransactionParams().do();
   const txn = algosdk.makeAssetTransferTxnWithSuggestedParamsFromObject({
@@ -115,9 +130,26 @@ for (const [label, acct] of [['agent  ', payer], ['meridian', publisher]] as con
   }
 }
 
+// Circle's faucet limits per address, so either wallet may be the one that got fed.
+// The agent is the only one that needs USDC — rebalance toward it.
+const pubUsdc = await inspect(publisher.addr.toString());
+const agentUsdc = await inspect(payer.addr.toString());
+if (agentUsdc.usdc < 0.05 && pubUsdc.usdc > 0.05 && agentUsdc.optedIn) {
+  const move = Math.floor(pubUsdc.usdc * 0.9 * 1e6) / 1e6;
+  process.stdout.write(`\n  Moving ${move} USDC from the publisher to the agent... `);
+  console.log(await sendUsdc(publisher, payer.addr.toString(), move));
+}
+
 const payerAfter = await inspect(payer.addr.toString());
 if (payerAfter.optedIn && payerAfter.usdc < 0.05) {
-  blockers.push(`Fund the agent with TestNet USDC → https://faucet.circle.com (Algorand TestNet)\n     ${payerAfter.address}`);
+  blockers.push(
+    `Get TestNet USDC into EITHER wallet — this script moves it to the agent automatically.\n` +
+      `     Circle limits per address, so if one is rate-limited, try the other:\n` +
+      `       agent      ${payer.addr.toString()}\n` +
+      `       publisher  ${publisher.addr.toString()}\n` +
+      `     https://faucet.circle.com             (Algorand Testnet)\n` +
+      `     https://testnet.folks.finance/faucet  (alternative, no Circle limit)`,
+  );
 }
 
 if (blockers.length) {
