@@ -6,61 +6,124 @@
 <title>Tollbooth — pay-per-crawl</title>
 <style>
   :root{
-    --bg:#0b0d10; --panel:#12161b; --line:#232a33; --dim:#7d8894;
-    --fg:#e8edf3; --buy:#3ddc97; --skip:#5b6673; --cash:#ffd166; --accent:#6c8cff;
+    --bg:#0a0c10; --panel:#11151b; --raised:#151a21; --line:#222933; --line2:#2c3542;
+    --dim:#7a8593; --mute:#59636f; --fg:#e9eef4;
+    --buy:#3ddc97; --cash:#ffcf5c; --accent:#7b93ff; --warn:#ff8f6b;
   }
   *{box-sizing:border-box}
+  html,body{height:100%}
   body{margin:0;background:var(--bg);color:var(--fg);
-       font:15px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif}
-  header{padding:18px 26px;border-bottom:1px solid var(--line);
-         display:flex;align-items:baseline;gap:18px;flex-wrap:wrap}
-  h1{margin:0;font-size:20px;letter-spacing:-.02em}
+       font:15px/1.55 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+       display:flex;flex-direction:column;overflow:hidden}
+
+  /* ---------------------------------------------------------------- header */
+  header{padding:14px 22px;border-bottom:1px solid var(--line);display:flex;
+         align-items:center;gap:16px;flex-wrap:wrap;flex:none}
+  h1{margin:0;font-size:19px;letter-spacing:-.02em;white-space:nowrap}
   h1 span{color:var(--accent)}
-  .ask{display:flex;gap:9px;flex:1;min-width:320px}
-  .ask input{flex:1;background:#0e1319;border:1px solid var(--line);color:var(--fg);
-             border-radius:7px;padding:9px 13px;font:inherit;font-size:14px;min-width:0}
+  .ask{display:flex;gap:8px;flex:1;min-width:300px}
+  .ask input{flex:1;background:#0d1218;border:1px solid var(--line2);color:var(--fg);
+             border-radius:8px;padding:10px 14px;font:inherit;font-size:14px;min-width:0}
   .ask input:focus{outline:none;border-color:var(--accent)}
-  .ask button{background:var(--accent);color:#fff;border:0;border-radius:7px;
-              padding:9px 17px;font:inherit;font-weight:600;font-size:14px;cursor:pointer;white-space:nowrap}
-  .ask button:disabled{opacity:.45;cursor:default}
-  .qnow{color:var(--dim);font-size:13px;padding:9px 26px 0;border-bottom:1px solid var(--line);
-        padding-bottom:11px}
-  .net{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--skip)}
+  .ask button{background:var(--accent);color:#0a0c10;border:0;border-radius:8px;
+              padding:10px 18px;font:inherit;font-weight:700;font-size:14px;
+              cursor:pointer;white-space:nowrap}
+  .ask button:disabled{opacity:.4;cursor:default}
+  .net{font:11.5px ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--mute);white-space:nowrap}
+
+  /* -------------------------------------------------------------- statusbar */
+  .status{display:flex;align-items:center;gap:12px;padding:10px 22px;flex:none;
+          border-bottom:1px solid var(--line);background:var(--panel);min-height:44px}
+  .phase{font:11px ui-monospace,Menlo,monospace;letter-spacing:.09em;text-transform:uppercase;
+         padding:4px 10px;border-radius:999px;white-space:nowrap;
+         background:rgba(123,147,255,.13);color:var(--accent)}
+  .phase.idle{background:rgba(89,99,111,.18);color:var(--mute)}
+  .phase.done{background:rgba(61,220,151,.14);color:var(--buy)}
+  .phase.live::after{content:"";display:inline-block;width:6px;height:6px;margin-left:7px;
+                     border-radius:50%;background:currentColor;animation:pulse 1.1s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+  .qnow{color:var(--dim);font-size:13.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+  /* ------------------------------------------------------------------ grid */
   main{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);
-       height:calc(100vh - 71px)}
-  section{background:var(--panel);display:flex;flex-direction:column;min-height:0}
-  .head{padding:14px 22px;border-bottom:1px solid var(--line);
-        display:flex;justify-content:space-between;align-items:center}
-  .head b{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim);font-weight:600}
-  .feed{overflow-y:auto;padding:8px 0;flex:1}
-  .row{padding:9px 22px;border-left:3px solid transparent;display:flex;gap:11px;align-items:flex-start}
-  .row .t{flex:1;min-width:0}
-  .row .ttl{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-  .row small{color:var(--dim);font-size:12.5px}
-  .bought{border-left-color:var(--buy)}
-  .skipped{opacity:.5}
-  .buying{border-left-color:var(--cash)}
-  .tag{font:11px ui-monospace,Menlo,monospace;padding:2px 7px;border-radius:4px;white-space:nowrap}
-  .tag.b{background:rgba(61,220,151,.15);color:var(--buy)}
-  .tag.s{background:rgba(91,102,115,.2);color:var(--skip)}
-  .tag.p{background:rgba(255,209,102,.15);color:var(--cash)}
-  a{color:var(--accent);text-decoration:none;font:11.5px ui-monospace,Menlo,monospace}
-  a:hover{text-decoration:underline}
-  .total{padding:26px 22px;border-bottom:1px solid var(--line)}
-  .total .n{font:600 54px/1 ui-monospace,Menlo,monospace;color:var(--cash);letter-spacing:-.02em}
-  .total .l{color:var(--dim);font-size:13px;margin-top:7px}
-  .bar{height:6px;background:#1b2028;border-radius:3px;overflow:hidden;margin-top:12px}
-  .bar i{display:block;height:100%;background:var(--buy);transition:width .4s}
-  .stat{display:flex;gap:26px;padding:14px 22px;border-bottom:1px solid var(--line)}
-  .stat div{font:12px ui-monospace,Menlo,monospace;color:var(--dim)}
-  .stat b{display:block;font-size:19px;color:var(--fg);margin-top:3px}
-  .answer{padding:18px 22px;border-top:1px solid var(--line);background:#0e1319;
-          max-height:34%;overflow-y:auto}
-  .answer h3{margin:0 0 9px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--dim)}
-  .empty{color:var(--skip);padding:22px;font-size:13.5px}
+       flex:1;min-height:0}
+  section{background:var(--panel);display:flex;flex-direction:column;min-height:0;min-width:0}
+  .head{padding:12px 20px;border-bottom:1px solid var(--line);display:flex;
+        justify-content:space-between;align-items:center;gap:10px;flex:none}
+  .head b{font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--dim);font-weight:700}
+
+  .stats{display:flex;gap:8px;padding:14px 20px 12px;flex:none}
+  .stat{flex:1;background:var(--raised);border:1px solid var(--line);border-radius:9px;padding:9px 12px}
+  .stat i{display:block;font:10px ui-monospace,Menlo,monospace;letter-spacing:.1em;
+          text-transform:uppercase;color:var(--mute);font-style:normal}
+  .stat b{display:block;font:600 19px/1.25 ui-monospace,Menlo,monospace;margin-top:3px}
+  .stat.spent b{color:var(--cash)}
+  .bar{height:5px;background:#1a2028;border-radius:3px;overflow:hidden;margin:0 20px 12px;flex:none}
+  .bar i{display:block;height:100%;width:0;background:var(--buy);transition:width .45s ease}
+
+  .feed{overflow-y:auto;flex:1;padding:2px 0 16px}
+  .feed::-webkit-scrollbar{width:9px}
+  .feed::-webkit-scrollbar-thumb{background:#232b35;border-radius:5px}
+
+  /* ------------------------------------------------------------------ rows */
+  .row{padding:10px 20px;display:flex;gap:11px;align-items:flex-start;
+       border-left:3px solid transparent;animation:in .25s ease}
+  @keyframes in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+  .row .body{flex:1;min-width:0}
+  .row .ttl{font-size:14.5px;line-height:1.4;overflow-wrap:anywhere}
+  .row small{display:block;color:var(--dim);font-size:12.5px;margin-top:2px;overflow-wrap:anywhere}
+  .row.pending{border-left-color:var(--cash);background:rgba(255,207,92,.04)}
+  .row.paid{border-left-color:var(--buy)}
+  .row.note{border-left-color:var(--line2)}
+  .row.warn{border-left-color:var(--warn)}
+
+  .tag{font:10.5px ui-monospace,Menlo,monospace;font-weight:600;padding:3px 7px;
+       border-radius:5px;white-space:nowrap;letter-spacing:.03em;flex:none;margin-top:1px}
+  .tag.pend{background:rgba(255,207,92,.15);color:var(--cash)}
+  .tag.paid{background:rgba(61,220,151,.15);color:var(--buy)}
+  .tag.note{background:rgba(89,99,111,.18);color:var(--mute)}
+  .tag.warn{background:rgba(255,143,107,.15);color:var(--warn)}
+
+  a.tx{color:var(--accent);text-decoration:none;font:11.5px ui-monospace,Menlo,monospace}
+  a.tx:hover{text-decoration:underline}
+  .score{font:11px ui-monospace,Menlo,monospace;color:var(--mute)}
+
+  /* --------------------------------------------------------- skipped block */
+  details.skipped{margin:6px 20px 0;border:1px solid var(--line);border-radius:9px;
+                  background:var(--raised);overflow:hidden}
+  details.skipped summary{padding:10px 14px;cursor:pointer;color:var(--dim);font-size:13px;
+                          list-style:none;display:flex;justify-content:space-between;gap:10px}
+  details.skipped summary::-webkit-details-marker{display:none}
+  details.skipped summary::after{content:"show";font:11px ui-monospace,Menlo,monospace;color:var(--mute)}
+  details.skipped[open] summary::after{content:"hide"}
+  .skiplist{border-top:1px solid var(--line);max-height:230px;overflow-y:auto}
+  .skiprow{padding:8px 14px;font-size:13px;color:var(--mute);border-bottom:1px solid rgba(34,41,51,.6);overflow-wrap:anywhere}
+  .skiprow:last-child{border-bottom:0}
+  .skiprow em{display:block;font-style:normal;font-size:12px;color:#4d5661;margin-top:1px}
+
+  /* -------------------------------------------------------------- publisher */
+  .total{padding:22px 20px 18px;border-bottom:1px solid var(--line);flex:none}
+  .total .n{font:600 52px/1 ui-monospace,Menlo,monospace;color:var(--cash);letter-spacing:-.025em}
+  .total .l{color:var(--dim);font-size:13px;margin-top:8px;line-height:1.45}
+
+  .answer{border-top:1px solid var(--line);background:#0c1116;flex:none;
+          max-height:46%;overflow-y:auto;padding:16px 20px}
+  .answer h3{margin:0 0 10px;font-size:11px;letter-spacing:.13em;text-transform:uppercase;color:var(--buy)}
+  .answer p{margin:0 0 10px;font-size:14.5px;line-height:1.6}
+  .answer p:last-child{margin-bottom:0}
+
+  .empty{color:var(--mute);padding:26px 20px;font-size:13.5px;line-height:1.6}
+
+  @media (max-width:900px){
+    main{grid-template-columns:1fr;overflow-y:auto}
+    section{min-height:60vh}
+    body{overflow:auto}
+  }
+  .empty code{background:var(--raised);padding:2px 6px;border-radius:4px;font-size:12.5px}
 </style>
 </head>
 <body>
+
 <header>
   <h1>Toll<span>booth</span></h1>
   <form class="ask" id="ask">
@@ -71,53 +134,206 @@
   </form>
   <div class="net">Algorand TestNet · USDC · GoPlausible facilitator</div>
 </header>
-<div class="qnow" id="qnow" hidden></div>
+
+<div class="status">
+  <span class="phase idle" id="phase">idle</span>
+  <span class="qnow" id="qnow">Ask a question and the agent will go shopping.</span>
+</div>
+
 <main>
+  <!-- ------------------------------------------------------------- buyer -->
   <section>
-    <div class="head"><b>The agent — buying</b><span class="net" id="wallet"></span></div>
-    <div class="stat">
-      <div>BUDGET<b id="budget">—</b></div>
-      <div>SPENT<b id="spent">$0.0000</b></div>
-      <div>APPRAISED<b id="seen">0</b></div>
+    <div class="head">
+      <b>The agent — buying</b>
+      <span class="net" id="wallet"></span>
     </div>
-    <div class="feed" id="agent"><div class="empty">No agent connected. Run <code>bun run agent</code>.</div></div>
+    <div class="stats">
+      <div class="stat"><i>Budget</i><b id="budget">—</b></div>
+      <div class="stat spent"><i>Spent</i><b id="spent">$0.0000</b></div>
+      <div class="stat"><i>Appraised</i><b id="seen">0</b></div>
+      <div class="stat"><i>Bought</i><b id="count">0</b></div>
+    </div>
+    <div class="bar"><i id="bar"></i></div>
+    <div class="feed" id="agent">
+      <div class="empty" id="agentEmpty">
+        Nothing running yet. Type a question above and press <code>Send the agent</code>.<br/>
+        It reads every preview free, then pays only for what it judges worth buying.
+      </div>
+    </div>
   </section>
+
+  <!-- --------------------------------------------------------- publisher -->
   <section>
-    <div class="head"><b>The Meridian — earning</b><span class="net">$0.001 / article</span></div>
+    <div class="head">
+      <b>The Meridian — earning</b>
+      <span class="net" id="price">$0.001 / article</span>
+    </div>
     <div class="total">
       <div class="n" id="earned">$0.0000</div>
       <div class="l"><span id="sales">0</span> articles sold to bots that would otherwise have been blocked</div>
-      <div class="bar"><i id="bar" style="width:0%"></i></div>
     </div>
-    <div class="feed" id="pub"><div class="empty">No sales yet.</div></div>
-    <div class="answer" id="ansbox" hidden><h3>Answer — built only from paid sources</h3><div id="ans"></div></div>
+    <div class="feed" id="pub">
+      <div class="empty" id="pubEmpty">No sales yet.</div>
+    </div>
+    <div class="answer" id="ansbox" hidden>
+      <h3 id="anshead">Answer — built only from paid sources</h3>
+      <div id="ans"></div>
+    </div>
   </section>
 </main>
+
 <script>
 const $ = (id) => document.getElementById(id);
-let budget = 0, spent = 0, earned = 0, sales = 0, seen = 0;
-const money = (n) => "$" + n.toFixed(4);
+const money = (n) => "$" + Number(n).toFixed(4);
 
-function add(el, cls, tag, tagCls, title, sub, link) {
-  if (el.querySelector(".empty")) el.innerHTML = "";
-  const row = document.createElement("div");
-  row.className = "row " + cls;
-  row.innerHTML =
-    `<span class="tag ${tagCls}">${tag}</span>` +
-    `<div class="t"><div class="ttl">${title}</div>` +
-    (sub ? `<small>${sub}</small> ` : "") +
-    (link ? `<a href="${link}" target="_blank" rel="noopener">view on chain ↗</a>` : "") +
-    `</div>`;
-  el.prepend(row);
+let budget = 0, spent = 0, earned = 0, sales = 0, bought = 0, skipped = 0, considered = 0;
+/** Article id -> its row, so a purchase updates in place instead of adding a second row. */
+const rows = new Map();
+let skipBox = null;
+
+function setPhase(text, kind) {
+  const el = $("phase");
+  el.textContent = text;
+  el.className = "phase" + (kind ? " " + kind : "");
 }
 
+function clearEmpty(el) {
+  const e = el.querySelector(".empty");
+  if (e) e.remove();
+}
+
+/** One row per article. Created when payment starts, upgraded when it settles. */
+function pendingRow(e) {
+  clearEmpty($("agent"));
+  const row = document.createElement("div");
+  row.className = "row pending";
+  row.innerHTML =
+    '<span class="tag pend">402</span>' +
+    '<div class="body"><div class="ttl"></div>' +
+    '<small><span class="score"></span> <span class="why"></span></small></div>';
+  row.querySelector(".ttl").textContent = e.title;
+  row.querySelector(".score").textContent = "score " + e.score;
+  row.querySelector(".why").textContent = "· " + (e.reason || "") + " · paying…";
+  rows.set(e.id, row);
+  $("agent").prepend(row);
+}
+
+function settleRow(e) {
+  const row = rows.get(e.id);
+  if (!row) return;
+  row.className = "row paid";
+  row.querySelector(".tag").className = "tag paid";
+  row.querySelector(".tag").textContent = "PAID";
+  const small = row.querySelector("small");
+  small.innerHTML = '<span class="score"></span> ';
+  small.querySelector(".score").textContent = "score " + e.score + " · " + money(0.001);
+  if (e.explorer) {
+    const a = document.createElement("a");
+    a.className = "tx";
+    a.href = e.explorer;
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.textContent = "view on chain ↗";
+    small.append(a);
+  }
+}
+
+function noteRow(e, tag, kind) {
+  clearEmpty($("agent"));
+  const row = document.createElement("div");
+  row.className = "row " + (kind === "warn" ? "warn" : "note");
+  row.innerHTML =
+    '<span class="tag ' + (kind === "warn" ? "warn" : "note") + '"></span>' +
+    '<div class="body"><div class="ttl"></div><small></small></div>';
+  row.querySelector(".tag").textContent = tag;
+  row.querySelector(".ttl").textContent = e.title;
+  if (e.sub) row.querySelector("small").textContent = e.sub;
+  else row.querySelector("small").remove();
+  $("agent").prepend(row);
+}
+
+/** Rejections collapse into one expandable block so the purchases stay readable. */
+function addSkip(e) {
+  if (!skipBox) {
+    clearEmpty($("agent"));
+    skipBox = document.createElement("details");
+    skipBox.className = "skipped";
+    skipBox.innerHTML =
+      '<summary><span class="cap"></span></summary><div class="skiplist"></div>';
+    $("agent").append(skipBox);
+  }
+  const item = document.createElement("div");
+  item.className = "skiprow";
+  item.innerHTML = "<span></span><em></em>";
+  item.querySelector("span").textContent = e.title;
+  item.querySelector("em").textContent = "score " + e.score + " — " + (e.reason || "");
+  skipBox.querySelector(".skiplist").append(item);
+  skipped++;
+  skipBox.querySelector(".cap").textContent =
+    skipped + " previews rejected — not worth paying for";
+}
+
+function addSale(e) {
+  clearEmpty($("pub"));
+  const row = document.createElement("div");
+  row.className = "row paid";
+  row.innerHTML =
+    '<span class="tag paid">+$0.001</span>' +
+    '<div class="body"><div class="ttl"></div><small></small></div>';
+  row.querySelector(".ttl").textContent = e.title;
+  const small = row.querySelector("small");
+  small.textContent = (e.payer ? e.payer.slice(0, 12) + "… " : "");
+  if (e.explorer) {
+    const a = document.createElement("a");
+    a.className = "tx";
+    a.href = e.explorer;
+    a.target = "_blank";
+    a.rel = "noopener";
+    a.textContent = "view on chain ↗";
+    small.append(a);
+  }
+  $("pub").prepend(row);
+}
+
+function paragraphs(el, text) {
+  el.innerHTML = "";
+  for (const part of String(text).split(/\n{2,}|\n/).map(s => s.trim()).filter(Boolean)) {
+    const p = document.createElement("p");
+    p.textContent = part;
+    el.append(p);
+  }
+}
+
+function resetAll() {
+  budget = spent = earned = sales = bought = skipped = considered = 0;
+  rows.clear();
+  skipBox = null;
+  $("agent").innerHTML =
+    '<div class="empty">Reading the free index…</div>';
+  $("pub").innerHTML = '<div class="empty">No sales yet.</div>';
+  $("ansbox").hidden = true;
+  $("earned").textContent = money(0);
+  $("spent").textContent = money(0);
+  $("sales").textContent = "0";
+  $("seen").textContent = "0";
+  $("count").textContent = "0";
+  $("bar").style.width = "0%";
+}
+
+/* --------------------------------------------------------------- controls */
+
 const form = $("ask"), qin = $("qin"), runBtn = $("run");
+function arm(running) {
+  runBtn.disabled = running;
+  runBtn.textContent = running ? "Running…" : "Send the agent";
+}
+
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   const question = qin.value.trim();
   if (!question) return;
-  runBtn.disabled = true;
-  runBtn.textContent = "Running…";
+  arm(true);
+  setPhase("starting", "live");
   try {
     const r = await fetch("/ask", {
       method: "POST",
@@ -127,82 +343,122 @@ form.addEventListener("submit", async (e) => {
     if (!r.ok) {
       const b = await r.json().catch(() => ({}));
       runBtn.textContent = b.message || "Failed";
-      setTimeout(() => { runBtn.disabled = false; runBtn.textContent = "Send the agent"; }, 2500);
+      setTimeout(() => arm(false), 2500);
     }
   } catch {
-    runBtn.disabled = false;
-    runBtn.textContent = "Send the agent";
+    arm(false);
   }
 });
+
+/* ------------------------------------------------------------------ stream */
 
 const es = new EventSource("/events");
 es.onmessage = (m) => {
   const e = JSON.parse(m.data);
-  const A = $("agent"), P = $("pub");
   switch (e.type) {
-    case "reset":
-      budget = spent = earned = sales = seen = 0;
-      A.innerHTML = P.innerHTML = ""; $("ansbox").hidden = true;
-      $("earned").textContent = money(0); $("spent").textContent = money(0);
-      $("sales").textContent = "0"; $("seen").textContent = "0"; $("bar").style.width = "0%";
+    case "state":
+      arm(Boolean(e.running));
+      if (e.running) setPhase("running", "live");
       break;
+
+    case "reset":
+      resetAll();
+      break;
+
     case "start":
       budget = e.budget;
-      $("qnow").hidden = false;
-      $("qnow").textContent = e.question;
       $("budget").textContent = money(budget);
-      $("wallet").textContent = String(e.wallet).slice(0, 10) + "…";
+      $("qnow").textContent = e.question;
+      $("wallet").textContent = String(e.wallet || "").slice(0, 10) + "…";
+      setPhase("reading free previews", "live");
       break;
+
+    case "feed":
+      $("price").textContent = e.price + " / article";
+      $("qnow").textContent = $("qnow").textContent;
+      setPhase("appraising " + e.count + " previews", "live");
+      break;
+
     case "ranked":
-      seen = e.considered;
-      $("seen").textContent = seen;
-      add(A, "", "RANK", "s", `Appraised ${e.considered} previews — ${e.shortlisted} worth buying`,
-          `scored by ${e.by}`);
+      considered = e.considered;
+      $("seen").textContent = e.considered;
+      setPhase("buying — " + e.shortlisted + " worth considering", "live");
+      noteRow(
+        { title: "Appraised " + e.considered + " previews — " + e.shortlisted + " worth buying",
+          sub: "scored by " + e.by },
+        "RANK",
+      );
       break;
+
     case "skipped":
-      add(A, "skipped", "SKIP", "s", e.title, `score ${e.score} — ${e.reason}`);
+      addSkip(e);
       break;
+
     case "buying":
-      add(A, "buying", "402", "p", e.title, `score ${e.score} — ${e.reason} · paying…`);
+      pendingRow(e);
       break;
+
     case "bought":
-      spent = e.spent; $("spent").textContent = money(spent);
+      settleRow(e);
+      spent = e.spent;
+      bought++;
+      $("spent").textContent = money(spent);
+      $("count").textContent = bought;
       $("bar").style.width = Math.min(100, (spent / budget) * 100) + "%";
-      add(A, "bought", "PAID", "b", e.title, `score ${e.score}`, e.explorer);
       break;
+
     case "sale":
-      earned = e.total; sales++;
+      earned = e.total;
+      sales++;
       $("earned").textContent = money(earned);
       $("sales").textContent = sales;
-      add(P, "bought", "+$0.001", "b", e.title, e.payer ? e.payer.slice(0, 12) + "…" : "", e.explorer);
+      addSale(e);
       break;
+
     case "exhausted":
-      add(A, "", "STOP", "p", "Budget exhausted", `spent ${money(e.spent)}`);
+      noteRow({ title: "Budget exhausted", sub: "spent " + money(e.spent) + " — stopped buying" }, "STOP");
       break;
-    case "answer":
-      $("ansbox").hidden = false;
-      $("ans").textContent = e.answer;
-      runBtn.disabled = false;
-      runBtn.textContent = "Send the agent";
+
+    case "synthesizing":
+      setPhase("writing the answer", "live");
       break;
+
     case "nothing":
       $("ansbox").hidden = false;
-      $("ans").textContent =
-        "Nothing in this archive was worth paying for, so the agent spent nothing. " +
-        "Every one of the 40 previews scored zero against this question.";
-      add(A, "", "NONE", "s", "Nothing relevant — spent $0.0000", e.reason);
+      $("anshead").textContent = "Nothing was worth paying for";
+      paragraphs($("ans"),
+        "Every one of the " + (considered || 40) + " previews scored zero against this question, so the agent " +
+        "bought nothing and spent $0.0000. Refusing to spend is the correct outcome — " +
+        "an agent with a wallet and no judgement is a liability.");
+      noteRow({ title: "Nothing relevant — spent $0.0000", sub: e.reason }, "NONE");
+      setPhase("done — spent nothing", "done");
       break;
+
+    case "answer":
+      $("ansbox").hidden = false;
+      $("anshead").textContent = "Answer — built only from paid sources";
+      paragraphs($("ans"), e.answer);
+      setPhase("done — " + money(e.spent) + " for " + (e.sources || []).length + " sources", "done");
+      break;
+
+    case "failed":
+      if (e.side === "agent" && e.error) {
+        noteRow({ title: "Run failed", sub: e.error }, "FAIL", "warn");
+        setPhase("failed", "");
+      }
+      break;
+
     case "finished":
-      runBtn.disabled = false;
-      runBtn.textContent = "Send the agent";
-      break;
-    case "state":
-      // Sent when this page connects. Re-arms a button left hanging by a server restart.
-      runBtn.disabled = Boolean(e.running);
-      runBtn.textContent = e.running ? "Running…" : "Send the agent";
+      arm(false);
+      if ($("phase").textContent.startsWith("buying") ||
+          $("phase").textContent === "running" ||
+          $("phase").textContent === "starting") {
+        setPhase("finished", "done");
+      }
       break;
   }
 };
+es.onerror = () => setPhase("disconnected", "");
 </script>
 </body>
 </html>
