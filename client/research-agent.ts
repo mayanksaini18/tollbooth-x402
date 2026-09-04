@@ -75,7 +75,7 @@ async function main() {
   console.log(`  Appraised by ${by}: ${shortlist.length} of ${candidates.length} worth buying\n`);
   await say({ type: 'ranked', by, considered: candidates.length, shortlisted: shortlist.length });
 
-  for (const r of ranked.filter(r => r.score < WORTH_BUYING).slice(0, 12)) {
+  for (const r of ranked.filter(r => r.score < WORTH_BUYING)) {
     const c = candidates.find(x => x.id === r.id)!;
     await say({ type: 'skipped', id: r.id, title: c.title, score: r.score, reason: r.reason });
   }
