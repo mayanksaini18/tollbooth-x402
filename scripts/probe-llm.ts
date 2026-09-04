@@ -7,7 +7,7 @@
  * discovering a 404 during the demo is not the moment to find out.
  */
 import 'dotenv/config';
-import { activeProvider, complete } from '../client/llm.js';
+import { activeProvider, complete, lastModelUsed } from '../client/llm.js';
 
 const provider = activeProvider();
 console.log(`\n  provider: ${provider}`);
@@ -44,4 +44,6 @@ const answer = await complete({
   prompt: 'Say OK.',
   maxTokens: 20,
 });
-console.log(`${answer.trim().slice(0, 40)}\n  ✅ provider works.\n`);
+console.log(answer.trim().slice(0, 40));
+const { lastModelUsed: used } = await import('../client/llm.js');
+console.log(`  ✅ answered by: ${used || lastModelUsed || 'unknown'}\n`);

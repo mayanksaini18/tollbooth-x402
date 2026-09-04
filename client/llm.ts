@@ -11,6 +11,9 @@
 
 export type Provider = 'gemini' | 'anthropic' | 'none';
 
+/** The model that answered the most recent call — the demo should never have to guess. */
+export let lastModelUsed = '';
+
 export function activeProvider(): Provider {
   if (process.env.GEMINI_API_KEY?.trim()) return 'gemini';
   if (process.env.ANTHROPIC_API_KEY?.trim()) return 'anthropic';
@@ -38,6 +41,9 @@ const GEMINI_MODELS = [
   'gemini-flash-lite-latest',
 ].filter(Boolean) as string[];
 
+/** De-duplicated, so a pinned model is not retried later in the chain. */
+const MODEL_CHAIN = [...new Set(GEMINI_MODELS)];
+
 /** Free-tier capacity comes and goes; these are worth trying the next model for. */
 const TRANSIENT = new Set([404, 429, 500, 502, 503, 504]);
 
@@ -47,7 +53,7 @@ async function gemini(o: CompleteOptions): Promise<string> {
 
   // Two passes: models are frequently "experiencing high demand" for a few seconds.
   for (let attempt = 0; attempt < 2; attempt++) {
-    for (const model of GEMINI_MODELS) {
+    for (const model of MODEL_CHAIN) {
       let res: Response;
       try {
         res = await fetch(
@@ -86,6 +92,8 @@ async function gemini(o: CompleteOptions): Promise<string> {
         lastError = `${model}: empty completion (${candidate?.finishReason ?? 'no reason'})`;
         continue;
       }
+      lastModelUsed = model;
+      if (process.env.LLM_VERBOSE === '1') console.log(`  [llm] answered by ${model}`);
       return text;
     }
     if (attempt === 0) await new Promise(r => setTimeout(r, 2000));
@@ -95,12 +103,14 @@ async function gemini(o: CompleteOptions): Promise<string> {
 
 async function anthropic(o: CompleteOptions): Promise<string> {
   const { default: Anthropic } = await import('@anthropic-ai/sdk');
+  const model = process.env.ANTHROPIC_MODEL?.trim() || 'claude-opus-5';
   const res = await new Anthropic().messages.create({
-    model: process.env.ANTHROPIC_MODEL?.trim() || 'claude-opus-5',
+    model,
     max_tokens: o.maxTokens ?? 8000,
     system: o.system,
     messages: [{ role: 'user', content: o.prompt }],
   });
+  lastModelUsed = model;
   return res.content.filter(b => b.type === 'text').map(b => b.text).join('');
 }
 
