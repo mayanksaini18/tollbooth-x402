@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# TypeScript and build output
+dist/
+coverage/
+*.tsbuildinfo
+
+# Local environment and wallet secrets
+.env
+.env.*
+!.env.example
+.secrets/
+secrets/
+*.mnemonic
+*.pem
+*.key
+
+# Tool and deployment caches
+.cache/
+.turbo/
+.vite/
+.vitest/
+.vercel/
+.wrangler/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Operating system files
+.DS_Store
+Thumbs.db
+.env

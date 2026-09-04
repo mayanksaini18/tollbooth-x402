@@ -1,0 +1,31 @@
+#pragma version 8
+// Template only. Review, test, and audit before using with value.
+// Goal: demonstrate where escrow release policy would live.
+
+txn ApplicationID
+int 0
+==
+bnz create
+
+txn OnCompletion
+int NoOp
+==
+assert
+
+txna ApplicationArgs 0
+byte "release"
+==
+bnz release
+
+err
+
+create:
+int 1
+return
+
+release:
+// Replace with real authorization, service proof, timeout, and receiver checks.
+global GroupSize
+int 1
+==
+return

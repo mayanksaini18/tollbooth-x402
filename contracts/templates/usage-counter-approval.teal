@@ -1,0 +1,50 @@
+#pragma version 8
+// Template only. Review, test, and audit before using with value.
+// Stores a per-account usage counter for an already-paid HTTP resource.
+
+txn ApplicationID
+int 0
+==
+bnz create
+
+txn OnCompletion
+int OptIn
+==
+bnz optin
+
+txn OnCompletion
+int NoOp
+==
+assert
+
+txna ApplicationArgs 0
+byte "record"
+==
+assert
+
+int 0
+byte "usage_count"
+app_local_get
+int 1
++
+store 0
+
+int 0
+byte "usage_count"
+load 0
+app_local_put
+
+int 1
+return
+
+create:
+int 1
+return
+
+optin:
+int 0
+byte "usage_count"
+int 0
+app_local_put
+int 1
+return
