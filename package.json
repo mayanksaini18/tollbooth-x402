@@ -19,7 +19,8 @@
     "agent": "tsx client/research-agent.ts",
     "wallet": "tsx scripts/wallet.ts",
     "probe:llm": "tsx scripts/probe-llm.ts",
-    "probe:pay": "tsx scripts/probe-verify.ts"
+    "probe:pay": "tsx scripts/probe-verify.ts",
+    "warm": "tsx scripts/warm-answer.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.123.0",

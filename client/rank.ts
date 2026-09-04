@@ -6,8 +6,7 @@
  * If there's no API key, or the call fails, keyword scoring takes over. The demo
  * must never hard-stop because an LLM had a bad moment in front of an audience.
  */
-import { createHash } from "node:crypto";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import * as cache from "./cache.js";
 import { activeProvider, complete } from "./llm.js";
 
 /**
@@ -15,30 +14,6 @@ import { activeProvider, complete } from "./llm.js";
  * unreachable later — free-tier capacity comes and goes, and a rehearsed demo should
  * not degrade the moment it has an audience. Delete .rank-cache.json to force a rerun.
  */
-const CACHE = ".rank-cache.json";
-const cacheKey = (question: string, items: Candidate[]) =>
-  createHash("sha256").update(question + "\u0000" + items.map((i) => i.id).join(",")).digest("hex").slice(0, 16);
-
-function readCache(key: string): Ranked[] | null {
-  if (process.env.FORCE_RANK === "1" || !existsSync(CACHE)) return null;
-  try {
-    const all = JSON.parse(readFileSync(CACHE, "utf8")) as Record<string, Ranked[]>;
-    return all[key] ?? null;
-  } catch {
-    return null;
-  }
-}
-
-function writeCache(key: string, ranked: Ranked[]): void {
-  try {
-    const all = existsSync(CACHE) ? (JSON.parse(readFileSync(CACHE, "utf8")) as Record<string, Ranked[]>) : {};
-    all[key] = ranked;
-    writeFileSync(CACHE, JSON.stringify(all, null, 2));
-  } catch {
-    /* caching is a convenience, never a requirement */
-  }
-}
-
 export interface Candidate { id: string; title: string; preview: string; section: string; date: string }
 export interface Ranked { id: string; score: number; reason: string }
 export type RankedBy = "model" | "cache" | "keywords";
@@ -75,8 +50,8 @@ export async function rankPreviews(
   question: string,
   items: Candidate[],
 ): Promise<{ ranked: Ranked[]; by: RankedBy }> {
-  const key = cacheKey(question, items);
-  const cached = readCache(key);
+  const ck = cache.key("rank", question, items.map((i) => i.id).join(","));
+  const cached = cache.get<Ranked[]>(ck);
   if (cached) return { ranked: cached, by: "cache" };
 
   if (activeProvider() === "none") return { ranked: keywordRank(question, items), by: "keywords" };
@@ -112,7 +87,7 @@ export async function rankPreviews(
       .sort((a, b) => b.score - a.score);
 
     if (!ranked.length) return { ranked: keywordRank(question, items), by: "keywords" };
-    writeCache(key, ranked);
+    cache.set(ck, ranked);
     return { ranked, by: "model" };
   } catch (err) {
     console.warn(`  ranking model unavailable (${(err as Error).message}) \u2014 falling back to keywords`);

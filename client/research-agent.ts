@@ -10,6 +10,7 @@
 import 'dotenv/config';
 import { createAvmPayingClient } from '../src/x402/client.js';
 import { explainPaymentError } from './lib.js';
+import * as cache from './cache.js';
 import { activeProvider, complete } from './llm.js';
 import { rankPreviews, type Candidate } from './rank.js';
 
@@ -61,6 +62,10 @@ async function main() {
     id: a.id, title: a.title, preview: a.preview, section: a.section, date: a.date,
   }));
   const unitPrice = Number(String(feed.price).replace('$', ''));
+  // Money in integer micro-dollars: 0.009 + 0.001 > 0.01 is true in binary floating
+  // point, which silently cost us the tenth purchase on the first live run.
+  const unitMicro = Math.round(unitPrice * 1e6);
+  const budgetMicro = Math.round(BUDGET * 1e6);
   console.log(`  Read ${candidates.length} free previews from ${feed.publisher} @ ${feed.price} each\n`);
   await say({ type: 'feed', count: candidates.length, publisher: feed.publisher, price: feed.price });
 
@@ -77,10 +82,11 @@ async function main() {
 
   // 3. Buy down the ranking until the money runs out.
   const bought: { title: string; body: string; txid: string }[] = [];
+  let spentMicro = 0;
   let spent = 0;
 
   for (const r of shortlist) {
-    if (spent + unitPrice > BUDGET) {
+    if (spentMicro + unitMicro > budgetMicro) {
       console.log(`  Budget exhausted at ${money(spent)} — stopping.\n`);
       await say({ type: 'exhausted', spent });
       break;
@@ -97,7 +103,8 @@ async function main() {
 
       const article = (await res.json()) as { title: string; body: string };
       const txid = String(settlement.transaction ?? '');
-      spent += unitPrice;
+      spentMicro += unitMicro;
+      spent = spentMicro / 1e6;
       bought.push({ title: article.title, body: article.body, txid });
 
       console.log(`  ✅ ${money(unitPrice)}  ${article.title.slice(0, 62)}`);
@@ -125,13 +132,29 @@ async function main() {
 
   await say({ type: 'synthesizing', sources: bought.length });
   const sources = bought.map((b, i) => `[${i + 1}] ${b.title}\n${b.body}`).join('\n\n');
-  const answer = (
-    await complete({
-      maxTokens: 2000,
-      system: 'Answer only from the supplied sources. Cite them inline as [1], [2]. Be concise — under 180 words.',
-      prompt: `Question: ${QUESTION}\n\nSources:\n\n${sources}`,
-    })
-  ).trim();
+
+  // The purchases already succeeded and are on chain. A congested model must not turn
+  // a good run into a failed one, so synthesis degrades to the source list instead.
+  const answerKey = cache.key('answer', QUESTION, bought.map(b => b.title).join('|'));
+  let answer = cache.get<string>(answerKey) ?? '';
+  try {
+    if (!answer)
+      answer = (
+      await complete({
+        maxTokens: 2000,
+        system: 'Answer only from the supplied sources. Cite them inline as [1], [2]. Be concise — under 180 words.',
+        prompt: `Question: ${QUESTION}\n\nSources:\n\n${sources}`,
+      })
+    ).trim();
+    cache.set(answerKey, answer);
+  } catch (err) {
+    console.log(`  (synthesis unavailable: ${(err as Error).message})\n`);
+    console.log('  Purchased sources:');
+    bought.forEach((b, i) => console.log(`  [${i + 1}] ${b.title}`));
+    console.log(`\n  Total cost: ${money(spent)}\n`);
+    await say({ type: 'answer', answer: `(synthesis unavailable — ${(err as Error).message})`, sources: bought.map(b => b.title), spent });
+    return;
+  }
 
   console.log('  ── Answer ──────────────────────────────────────────\n');
   console.log(answer.split('\n').map(l => `  ${l}`).join('\n'));

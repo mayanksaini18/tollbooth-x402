@@ -31,10 +31,14 @@ needs almost no ALGO of its own.
 
 ```bash
 pnpm install
-pnpm wallet     # creates + opts in both wallets, tells you what to fund
-pnpm dev        # publisher + dashboard on http://localhost:3100
-pnpm agent      # in a second terminal — the crawler goes shopping
+pnpm wallet        # creates + opts in both wallets, tells you what to fund
+pnpm dev           # publisher + dashboard on http://localhost:3100
+pnpm warm          # optional but do it — precomputes ranking + answer
+pnpm agent         # in a second terminal — the crawler goes shopping
 ```
+
+A verified run: **10 articles bought for exactly $0.0100**, ten real USDC settlements
+on Algorand TestNet, and an answer citing eight of the ten sources it paid for.
 
 `pnpm wallet` is the gate. It generates two TestNet wallets — the agent that pays and
 The Meridian that gets paid — opts both into USDC, and refuses to pass until each is

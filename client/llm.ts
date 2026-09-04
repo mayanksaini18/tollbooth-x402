@@ -28,9 +28,14 @@ export interface CompleteOptions {
 /** Model names drift; the first that answers wins. Override with GEMINI_MODEL. */
 const GEMINI_MODELS = [
   process.env.GEMINI_MODEL?.trim(),
+  // Lite variants carry less load, so they answer when the headline models 503.
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
+  'gemini-2.5-flash-lite',
+  'gemini-3.5-flash',
   'gemini-2.5-flash',
-  'gemini-2.0-flash',
   'gemini-flash-latest',
+  'gemini-flash-lite-latest',
 ].filter(Boolean) as string[];
 
 /** Free-tier capacity comes and goes; these are worth trying the next model for. */
